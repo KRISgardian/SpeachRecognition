@@ -2,5 +2,5 @@ test-data
 *.ui
 *.conf
 *.ini
-visualize.py
-ui.py
+/visualize.py
+/ui.py
