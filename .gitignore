@@ -4,3 +4,4 @@ test-data
 *.ini
 /visualize.py
 /ui.py
+/test.py
