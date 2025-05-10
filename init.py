@@ -1,13 +1,30 @@
 import audio as audioModule
-import visualize as visualModule
+import pyqtgraph as pg
+import numpy as np
 
+def clearStatus(status : list):
+    status[0] = 0
+    status[1] = 0
+    status[2] = 0
+    status[3] = 0
+    status[4] = 0
+    status[5] = 0
+    status[6] = 0
+    status[7] = 0
+    status[8] = 0
 
 if __name__ == "__main__":
     # Status variable for information from the loop.
     status = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    # Data list contains required information from file.
-    data = []
+    # 0. Riff chunk
+    # 1. Wav chunk 
+    # 2. Data chunk
+    # 3. Audio format
+    # 4. Number of channels
+    # 5. Sample rate
+    # 6. Byte rate
+    # 7. Block align
+    # 8. Bits per sample
 
     # FileNames list contains all existing file names.
     fileNames = []
@@ -30,7 +47,8 @@ if __name__ == "__main__":
         firstDataIndex = 0
         
         # Getting info from wav file.
-        firstDataIndex = audioModule.getInfoFromAudioFile("test-data/wav/44100/" + str(existingRecords[counter]), data, status)
+        firstDataIndex, data = audioModule.getInfoFromAudioFile("test-data/wav/44100/" + str(existingRecords[counter]), status)
+
 
         # Getting more details and determine if everything is good.
         if status[0] == 0:
@@ -45,20 +63,28 @@ if __name__ == "__main__":
 
         # Audio proccessing phase.
 
+        sample = 150 # status[6] - 1
 
+        data = data[firstDataIndex:sample]
+    
+        data = audioModule.convertAudioFileToStereo(data)
 
-        # Second counter instance.
-        secondCounter = 0
+        app = pg.mkQApp()
 
-        # Status length
-        statusLength = len(status)
+        window = pg.PlotWidget()
 
-        while statusLength != secondCounter:
-            status[secondCounter] = 0
-            secondCounter += 1
+        pg.setConfigOption("useCupy", "True")
+
+        window.useOpenGL(True)
+
+        window.plot(np.linspace(0, 100000, len(data)), data, pen='b')
+
+        window.setTitle(str(existingRecords[counter]), color='w', size="16pt")
+
+        window.show()
+
+        app.exec()
+
+        clearStatus(status)
 
         counter += 1
-    
-
-else:
-    pass
