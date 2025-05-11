@@ -8,262 +8,328 @@ from randomFunctions import getRandomHashName
 import data as dataModule
 
 
-# Convert all audio file to .wav format. Create new names for files 
-# and put them into listened directory. Create file named .indexes and
-# write all existing file names into. Delete old files if needed.
-def getAudioFilesReady(bitrate : int,
-                       savePath : str,
-                       basePath : str,
-                       clearAfter : bool = True,
-                       quiet : bool = True):
+# Status instance
+# 0. Riff chunk
+# 1. Wav chunk 
+# 2. Data chunk
 
-    try:
+class audio:
 
-        fileNames = []
+    def __init__(self,
+                 quiet : bool = True):
+        self.bitRate = 1411
+        self.quiet = quiet
+        self.status = [0, 0, 0]
+        self.dataDir = "test-data/"
+        self.workingDir = "C:/Users/Kris/AppData/Local/Temp/"
+        self.getAudioFilesReady()
+        self.numberOfFileNames = len(self.existingFileNames)
+        
 
-        # Creating lists for files names.
-        outputRecords = []
 
-        # Setting up counter value.
-        counter = 0
+    # Convert all audio file to .wav format. Create new names for files 
+    # and put them into listened directory. Create file named .indexes and
+    # write all existing file names into.
+    def getAudioFilesReady(self):
 
-        # Fill list with exists files in given directory.
-        filesList = os.listdir(basePath)
+        try:
 
-        # Files list length.
-        listLength = len(filesList)
+            fileNames = []
 
-        # Exists.
-        if listLength == 0:
+            # Creating lists for files names.
+            outputRecords = []
+
+            # Setting up counter value.
+            counter = 0
+
+            # Fill list with exists files in given directory.
+            filesList = os.listdir(self.dataDir)
+
+            # Files list length.
+            listLength = len(filesList)
+
+            # Exists.
+            if listLength == 0:
+                return 1
+
+            # While listLength != counter all files will be converted from any to .wav .
+            while listLength != counter:
+                fileNames.append(self.dataDir + filesList[counter])
+                outputRecords.append(getRandomHashName() + ".wav")
+                counter += 1
+
+            # Get file handler to /.indexes file with +append mode.
+            hFile = open(self.workingDir + ".indexes", '+a')
+
+            counter = 0
+
+            # While i != len(inputRecords) length -> do.
+            while listLength != counter:
+                stream = ffmpeg.input(fileNames[counter])
+                stream = ffmpeg.output(stream, (self.workingDir +  outputRecords[counter]), audio_bitrate=self.bitRate, format="wav")
+                ffmpeg.run(stream, quiet=self.quiet) # quiet flag is true by default to prevent surplus console output.
+                hFile.write(outputRecords[counter] + "\n")
+                counter += 1
+
+            # Closing file handler.
+            hFile.close()
+
+            self.existingFileNames = outputRecords
+
+        except:
             return 1
 
-        # While listLength != counter all files will be converted from any to .wav .
-        while listLength != counter:
-            fileNames.append(basePath + filesList[counter])
-            outputRecords.append(getRandomHashName() + ".wav")
-            counter += 1
+
+    # TODO: Describe this function manually.
+    def getInfoFromAudioFile(self,
+                             existingFileName : str):
+        
+        try:
+
+            # First data index in file.
+            firstDataIndex = 0
+
+            # Some local consts.
+            riffChunk = 295
+            wavChunk = 307
+            dataChunk = 410
+
+            print(self.workingDir + existingFileName)
+
+            # Open file -> read everything to the buffer -> close file.
+            hFile = open(self.workingDir + existingFileName, "rb")
+            data = hFile.read()
+            hFile.close()
+
+            # Counter for file parsing.
+            counter = 0
+
+            # Parsing loop.
+            while counter < 300:
+                # Riff chunk block.
+                if self.status[0] == 0:
+                    if sum(data[counter:counter + 4]) == riffChunk:
+                        print("Riff chunk founded at addr:" + str(counter))
+                        self.status[0] = 1 + counter
 
 
-        # Convert everything to wav(PCmodulation coding type).
+                # Main info chunk block. As is - wav, af, nc, sr, br, ba
+                if self.status[1] == 0:
+                    if sum(data[counter:counter + 4]) == wavChunk:
+                        # Wav chunk block.
+                        print("Wav chunk founded at addr:" + str(counter))
+                        self.status[1] = 1 + counter
+
+                        counter += 12
+
+                        # Audio format chunk block.
+                        print("Audio format chunk founded at addr:" + str(counter))
+                        print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
+                        self.audioFormat = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
+                        
+                        counter += 2
+
+                        # Number of channels block.
+                        print("Number of channels founded at addr:" + str(counter))
+                        print((dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))))
+                        self.numberOfChannels = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
+
+                        counter += 2
+
+                        # Sample rate block.
+                        print("Sample rate founded at addr:" + str(counter))
+                        print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4])))
+                        self.sampleRate = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4]))
+
+                        counter += 4
+
+                        # Byte rate block.
+                        print("Byte rate founded at addr:" + str(counter))
+                        print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4])))
+                        self.byteRate = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4]))
+
+                        counter += 2
+
+                        # Block align block.
+                        print("Block align founded at addr:" + str(counter))
+                        print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
+                        self.blockAlign = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
+
+                        counter += 2
+
+                        # Bits per sample.
+                        print("Bits per sample founded at addr:" + str(counter))
+                        print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
+                        self.bitsPerSample = dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
 
 
-        # Counter value.
-        i = 0
-
-        # Get file handler to /.indexes file with +append mode.
-        hFile = open(savePath + ".indexes", '+a')
-
-        # While i != len(inputRecords) length -> do.
-        while listLength != i:
-            stream = ffmpeg.input(fileNames[i])
-            stream = ffmpeg.output(stream, (savePath +  outputRecords[i]), audio_bitrate=bitrate, format="wav")
-            ffmpeg.run(stream, quiet=quiet) # quiet flag is true by default to prevent surplus console output.
-            hFile.write(outputRecords[i] + "\n")
-            i += 1
-
-        # Closing file handler.
-        hFile.close()
-
-        # If clearAfter == True then delete all previous files.
-        if clearAfter:
-            i = 0
-            while i != listLength:
-                try:
-                    os.remove(fileNames[i])
-                except:
-                    if Exception == FileNotFoundError: # Plug. Without this Windows causes errors.
-                        pass
-                i += 1
-
-    except:
-        return 1
-
-    return outputRecords
+                # Data chunk block. 
+                if self.status[2] == 0:
+                    if sum(data[counter:counter + 4]) == dataChunk:
+                        # Data & its size.
+                        print("Data chunk founded at addr:" + str(counter))
+                        print("Size chunk was found at addr:" + str(counter+4) + "\nFile size is now:" + str(dataModule.getNormalizedDataFromWAV(list(data[counter+4:counter+8]))))
+                        firstDataIndex = counter + 8
+                        self.audioDataLength = dataModule.getNormalizedDataFromWAV(list(data[counter+4:counter+8]))
 
 
+                        # FristData block.
+                        print("First data was founded at addr:", firstDataIndex)
+                        print("First data:", hex(data[counter+8]))
+                        self.status[2] = 1 + counter
 
-# TODO: Describe this function manually.
-def getInfoFromAudioFile(path : str,
-                          status : list):
-    try:
+                counter += 1
 
-        # First data index in file.
-        firstDataIndex = 0
+            self.firstDataIndex = firstDataIndex
+            self.data = data
+            self.dataLength = len(data)
 
-        # Some local consts.
-        riffChunk = 295
-        wavChunk = 307
-        dataChunk = 410
-
-        # Open file -> read everything to the buffer -> close file.
-        hFile = open(path, "rb")
-        data = hFile.read()
-        hFile.close()
-
-        # Counter for file parsing.
-        counter = 0
-
-        # Containter variables.
-        container = []
-
-        # Parsing loop.
-        while counter < 300:
-            # Riff chunk block.
-            if status[0] == 0:
-                if sum(data[counter:counter + 4]) == riffChunk:
-                    print("Riff chunk founded at addr:" + str(counter))
-                    status[0] = 1 + counter
+        except:
+            return 1
 
 
-            # Main info chunk block. As is - wav, af, nc, sr, br, ba
-            if status[1] == 0:
-                if sum(data[counter:counter + 4]) == wavChunk:
-                    # Wav chunk block.
-                    print("Wav chunk founded at addr:" + str(counter))
-                    status[1] = 1 + counter
+    # Convert data to amplitude values by
+    # bitsPerSample rate.
+    def normalizeDataFromAudio(self):
 
-                    counter += 12
+        try:
 
-                    # Audio format chunk block.
-                    print("Audio format chunk founded at addr:" + str(counter))
-                    print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
-                    status[3] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
-                    
+            length = len(self.data)
+
+            counter = 0
+            
+            output = []
+
+            match self.bitsPerSample:
+                case 4:
+                    while counter != length:
+                        temp = list(bin(self.data[counter])[2:])
+
+                        if len(temp) < 8:
+                            tempCounter = len(temp)
+                            while tempCounter != 8:
+                                temp.reverse()
+                                temp.append(0)
+                                temp.reverse()
+                                tempCounter += 1
+                        if len(temp) % 8 != 0:
+                            temp.reverse()
+                            temp.append(0)
+                            temp.reverse()
+
+                        output.append(int(str(temp[:4]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2))
+
+                        output.append(int(str(temp[4:9]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2) \
+                                - int(str(temp[4:9]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2) * 2)
+
+                        counter += 1
+                case 8:
+                    while counter != length:
+                        output.append(int(self.data[counter]))
+                        counter += 1
+            
+            self.data = output
+            self.dataLength = len(output)
+
+        except:
+            return 1
+
+
+    def getAudioAsMonoFromData(self,
+                               channel : int = 0):
+        # data : list
+        # channel : int = 0
+        # 0 - stand for left channel
+        # 1 - stand for right channel
+        
+        try:
+            
+            length = len(self.data)
+
+            output = []
+
+            if channel == 0:
+
+                counter = 0
+
+                while counter != length:
+                    output.append(self.data[counter])
                     counter += 2
+            elif channel == 1:
 
-                    # Number of channels block.
-                    print("Number of channels founded at addr:" + str(counter))
-                    print((dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))))
-                    status[4] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
+                counter = 1
 
+                while counter != length:
+                    output.append(self.data[counter])
                     counter += 2
-
-                    # Sample rate block.
-                    print("Sample rate founded at addr:" + str(counter))
-                    print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4])))
-                    status[5] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4]))
-
-                    counter += 4
-
-                    # Byte rate block.
-                    print("Byte rate founded at addr:" + str(counter))
-                    print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4])))
-                    status[6] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+4]))
-
-                    counter += 2
-
-                    # Block align block.
-                    print("Block align founded at addr:" + str(counter))
-                    print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
-                    status[7] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
-
-                    counter += 2
-
-                    # Bits per sample.
-                    print("Bits per sample founded at addr:" + str(counter))
-                    print(dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2])))
-                    status[8] = 1 + dataModule.getNormalizedDataFromWAV(list(data[counter:counter+2]))
-                    
-
-            # Data chunk block. 
-            if status[2] == 0:
-                if sum(data[counter:counter + 4]) == dataChunk:
-                    # Data & its size.
-                    print("Data chunk founded at addr:" + str(counter))
-                    print("Size chunk was found at addr:" + str(counter+4) + "\nFile size is now:" + str(dataModule.getNormalizedDataFromWAV(list(data[counter+4:counter+8]))))
-                    firstDataIndex = counter + 8
-
-                    # FristData block.
-                    print("First data was founded at addr:", firstDataIndex)
-                    print("First data:", hex(data[counter+8]))
-                    status[2] = 1 + counter
-
-            counter += 1
-
-    except:
-        return 1
-
-    return firstDataIndex, data
-
-
-
-
-# Get amplitude from data whether file has 2(stereo)
-# or 1(mono) channels to AVT(amplitude versus time)
-# form. This function will rewrite whole data to
-# mono amplitude form.
-#def getMonoAVTFromAudioData(data : list):
-#    pass
-
-
-
-#FFT (Fast Fourier Transform) is a basic algorithm in 
-# signals and frequencies. This function ->
-#1 - Remove all junk from the data except the data itself.
-#2 - Get the FFT from the data and store it in the FVT 
-# (frequency versus time) variable.
-#def useFFTOnAudioData(data : list):
-#    fvt = np.fft.fft(data, norm="ortho")
-#   return fvt
-
-
-# Both functions works only with 4 bits depth audio files.
-def convertAudioFileToMono(data):
-    length = len(data)
-
-    counter = 0
+            else:
+                raise ValueError
+            
+            self.mono = output
+        except:
+            return 1
     
-    output = []
 
-    while counter != length:
-        temp = list(bin(data[counter])[2:])
+    def getAudioAsStereoFromData(self):
 
-        if len(temp) < 8:
-            tempCounter = len(temp)
-            while tempCounter != 8:
-                temp.reverse()
-                temp.append(0)
-                temp.reverse()
-                tempCounter += 1
-        if len(temp) % 8 != 0:
-            temp.reverse()
-            temp.append(0)
-            temp.reverse()
+        try:
+            
+            length = len(self.data)
 
-        output.append(int(str(temp[:4]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2))
+            left = []
+            right = []
 
-        counter += 1
+            counter = 0
 
-    return output
-
-
-def convertAudioFileToStereo(data):
-    length = len(data)
-
-    counter = 0
+            while counter != length:
+                left.append(self.data[counter])
+                right.append(self.data[counter+1])
+                counter += 2
+            
+            self.left = left
+            self.right = right
+        except:
+            return 1
     
-    output = []
 
-    while counter != length:
-        temp = list(bin(data[counter])[2:])
+    def left(self):
+        return self.left
+    
+    
+    def right(self):
+        return self.right
+    
+    
+    def mono(self):
+        return self.mono
+    
 
-        if len(temp) < 8:
-            tempCounter = len(temp)
-            while tempCounter != 8:
-                temp.reverse()
-                temp.append(0)
-                temp.reverse()
-                tempCounter += 1
-        if len(temp) % 8 != 0:
-            temp.reverse()
-            temp.append(0)
-            temp.reverse()
+    def clearStatus(self):
+        try:
+            self.status[0] = 0
+            self.status[1] = 0
+            self.status[2] = 0
+        except:
+            return 1
 
-        output.append(int(str(temp[:4]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2))
 
-        output.append(int(str(temp[4:9]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2) \
-                   - int(str(temp[4:9]).replace(']', '').replace('[', '').replace('\'', '').replace(',', '').replace(' ', ''), 2) * 2)
+    def statusCkeck(self):
+        try:
+            if self.status[0] == 0:
+                print("Riff chunk was not founded")
+            if self.status[1] == 0:
+                print("Wav chunk was not founded")
+            if self.status[2] == 0:
+                print("Data chunk was not founded")
+            elif self.status[0] != 0 and self.status[1] != 0 and self.status[2] != 0:
+                print("Correction phase:Done\n")
+        except:
+            return 1
 
-        counter += 1
 
-    return output
+    def size(self):
+        return self.numberOfFileNames
+    
+
+    def length(self):
+        return self.dataLength
