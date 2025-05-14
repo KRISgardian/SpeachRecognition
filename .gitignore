@@ -5,4 +5,5 @@ test-data
 /visualize.py
 /ui.py
 /test.py
+/.venv
 __*__
