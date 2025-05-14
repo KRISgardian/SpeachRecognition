@@ -7,6 +7,7 @@ from randomFunctions import getRandomHashName
 
 import data as dataModule
 
+# TODO: Describe every existing functions manually.
 
 # Status instance
 # 0. Riff chunk
@@ -93,8 +94,6 @@ class audio:
             riffChunk = 295
             wavChunk = 307
             dataChunk = 410
-
-            print(self.workingDir + existingFileName)
 
             # Open file -> read everything to the buffer -> close file.
             hFile = open(self.workingDir + existingFileName, "rb")
