@@ -1,6 +1,7 @@
 import audio as audioModule
 import pyqtgraph as pg
 import numpy as np
+import threading
 
 # TODO: Done with this step by step shit
 # init script explanation step by step
@@ -18,17 +19,7 @@ import numpy as np
 
 if __name__ == "__main__":
 
-    # There's just some global vars.
-    global pythonCuda
-    pythonCuda = True
-
-    # Create audioModule class instance.
-    audio = audioModule.audio()
-
-    # Counter for main working loop.
-    counter = 0
-
-    while counter != audio.size():
+    def init(counter : int):
 
         # This will get data from files name by name and contain it inside audio class.
         # It will automatically delete previous instance of data.
@@ -41,6 +32,10 @@ if __name__ == "__main__":
         # and also will cut all data using bits per sample value from file meta.
         audio.normalizeDataFromAudio()
 
+        # This data will have less amount of samples(a.s. amps values) which is good for
+        # demonstration purposes.
+        audio.getEasedData()
+
         # Create quick app.
         app = pg.mkQApp()
 
@@ -50,16 +45,43 @@ if __name__ == "__main__":
         # Using gpu to process data. I my own doubt it tbh.
         pg.setConfigOption("useCupy", pythonCuda)
 
+        print(audio.edataLength)
+
         # Set plot data. As is create first graph using amplitude from data.
-        window.plot(np.linspace(0, 10, audio.length()), audio.data, pen='b')
+        window.plot(np.linspace(0, 10, audio.edataLength), audio.edata, pen='b')
 
         # Set title to graph by file name.
         window.setTitle(str(audio.existingFileNames[counter]), color='w', size="16pt")
 
-        # Show window.
-        window.show()
+        return window, app
 
-        # Execute QT app.
-        app.exec()
 
-        counter += 1
+
+    # There's just some global vars.
+    global pythonCuda
+    pythonCuda = True
+
+    global numberOfCorsToUse
+    numberOfCorsToUse = 2
+
+    # Create audioModule class instance.
+    audio = audioModule.audio()
+
+    # Counter for main working loop.
+    counter = 0
+
+    # This loop will spread all load between bunch of threads.
+
+    # This array will contain all working thread instances.
+    Threads = []
+
+    while counter != audio.size():
+
+        counter1 = 0
+
+        while counter1 != numberOfCorsToUse:
+
+
+
+
+        counter += numberOfCorsToUse

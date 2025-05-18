@@ -24,6 +24,7 @@ class audio:
         self.dataDir = "test-data/"
         self.workingDir = "C:/Users/Kris/AppData/Local/Temp/"
         self.getAudioFilesReady()
+        self.samples = 11025
         self.numberOfFileNames = len(self.existingFileNames)
         
 
@@ -229,6 +230,33 @@ class audio:
             
             self.data = output
             self.dataLength = len(output)
+
+        except:
+            return 1
+
+
+    def getEasedData(self):
+
+        try:
+
+            length = self.dataLength
+
+            counter = 0
+
+            edata = []
+
+            while counter != length:
+
+                edata.append(self.data[counter])
+
+                if(counter + self.samples <= length):
+                    counter += self.samples
+                else:
+                    edata.append(self.data[-1])
+                    break
+
+            self.edata = edata
+            self.edataLength = len(edata)
 
         except:
             return 1
